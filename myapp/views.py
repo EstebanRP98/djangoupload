@@ -165,7 +165,7 @@ def upload_pdf(request):
         embeddings = OpenAIEmbeddings()
         docsearch = FAISS.from_texts(texts, embeddings)
         ruta_completa = os.path.join(
-            os.getcwd()+"\media", filename_without_extension + ".pkl")
+            os.getcwd()+"media", filename_without_extension + ".pkl")
         with open(ruta_completa, 'wb') as f:
             pickle.dump(docsearch, f)
         id_generado = generar_id_aleatorio()
