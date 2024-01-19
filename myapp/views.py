@@ -1,4 +1,5 @@
 from django.http import JsonResponse
+from .decorators import firebase_auth_required
 from django.views.decorators.csrf import csrf_exempt
 import json
 from .mongodb_connector import MongoDBConnector
@@ -526,6 +527,7 @@ def subir_documento(request):
     return JsonResponse({'mensaje': 'Método no permitideishon'}, status=405)
 
 
+@firebase_auth_required
 def health_check(request):
     # Aquí puedes añadir lógica para verificar cosas como la conexión a la base de datos, etc.
     # Por ahora, simplemente devolvemos un estado "OK".
