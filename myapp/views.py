@@ -524,3 +524,9 @@ def subir_documento(request):
     else:
         form = DocumentoForm()
     return JsonResponse({'mensaje': 'Método no permitideishon'}, status=405)
+
+
+def health_check(request):
+    # Aquí puedes añadir lógica para verificar cosas como la conexión a la base de datos, etc.
+    # Por ahora, simplemente devolvemos un estado "OK".
+    return JsonResponse({"status": "OK"})

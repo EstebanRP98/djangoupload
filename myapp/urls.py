@@ -18,4 +18,5 @@ urlpatterns = [
     path('schedule-venture/', views.get_schedule_venture,
          name='get_schedule_venture'),
     path('upload/', views.subir_documento, name='subir_documento'),
+    path('health-check/', views.health_check, name='health_check'),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
