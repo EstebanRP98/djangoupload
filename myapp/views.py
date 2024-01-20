@@ -262,19 +262,20 @@ def save_time_venture(request):
         try:
             data = json.loads(request.body)
             venture_id = data.get('venture_id')
+            day = data.get('day')
             time_ranges = data.get('time_ranges')
 
-            if venture_id and time_ranges:
+            if venture_id and day and time_ranges:
                 collection_time_venture = mongodb_connector.get_collection(
                     'time_venture')
                 # Check if a document for the company already exists
                 existing_document = collection_time_venture.find_one(
-                    {'venture_id': venture_id})
+                    {'venture_id': venture_id, 'day': day})
 
                 if existing_document:
                     # If it exists, update the time ranges
                     collection_time_venture.update_one(
-                        {'venture_id': venture_id},
+                        {'venture_id': venture_id, 'day': day},
                         {'$set': {'time_ranges': time_ranges}}
                     )
                     return JsonResponse({'message': 'Time ranges updated successfully'})
@@ -282,6 +283,7 @@ def save_time_venture(request):
                     # If it doesn't exist, create a new time_venture document
                     time_venture = {
                         'venture_id': venture_id,
+                        'day': day,
                         'time_ranges': time_ranges
                     }
                     result = collection_time_venture.insert_one(time_venture)
