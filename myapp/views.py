@@ -325,7 +325,7 @@ def get_time_venture_by_company_name(request, venture_id):
             for time_venture in time_ventures:
                 time_venture['_id'] = str(time_venture['_id'])
 
-            return JsonResponse({'time_ventures': time_ventures})
+            return JsonResponse(time_ventures, safe=False)
 
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
