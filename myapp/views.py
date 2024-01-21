@@ -300,18 +300,33 @@ def save_time_venture(request):
 def get_time_venture_by_company_name(request, venture_id):
     if request.method == 'GET':
         try:
+            # Obtener el parámetro venture_id, que siempre está presente
+            # Verificar si se proporcionó venture_id
+            if not venture_id:
+                return JsonResponse({'error': 'El parámetro venture_id es requerido'}, status=400)
+
+            # Obtener el parámetro day, que es opcional
+            day = request.GET.get('day')
+
             # Crear una conexión a la base de datos MongoDB
             collection_time_venture = mongodb_connector.get_collection(
                 'time_venture')
-            # Buscar el time_venture por company_name
-            time_venture = collection_time_venture.find_one(
-                {'venture_id': venture_id})
 
-            if time_venture:
+            # Crear el filtro de búsqueda basado en los parámetros proporcionados
+            query_filter = {'venture_id': venture_id}
+            if day:
+                query_filter['day'] = day
+
+            # Buscar time_ventures con el filtro
+            cursor = collection_time_venture.find(query_filter)
+
+            # Convertir los documentos de MongoDB a una lista
+            time_ventures = list(cursor)
+            for time_venture in time_ventures:
                 time_venture['_id'] = str(time_venture['_id'])
-                return JsonResponse(time_venture)
-            else:
-                return JsonResponse({'error': 'No se encontró el time_venture para el company_name proporcionado'}, status=404)
+
+            return JsonResponse({'time_ventures': time_ventures})
+
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
     else:
