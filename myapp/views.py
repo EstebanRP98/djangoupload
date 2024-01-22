@@ -479,8 +479,8 @@ def get_allow_time(request):
                     # Agregar la hora a la lista de horas disponibles si es válida
                     if is_available:
                         available_hour = {
-                            "start_time": current_time.strftime('%Y-%m-%d %H:%M'),
-                            "end_time": (current_time + timedelta(minutes=time_service)).strftime('%Y-%m-%d %H:%M')
+                            "fecha_inicio": current_time.strftime('%Y-%m-%d %H:%M'),
+                            "fecha_fin": (current_time + timedelta(minutes=time_service)).strftime('%Y-%m-%d %H:%M')
                         }
                         available_hours.append(available_hour)
 
