@@ -424,8 +424,6 @@ def get_allow_time(request):
             time_venture = collection_time_venture.find_one(
                 {'venture_id': venture_id, 'day': day_name})
 
-            print(time_venture)
-
             if not time_venture:
                 return JsonResponse({'error': 'Venture no encontrado'}, status=404)
 
@@ -481,8 +479,8 @@ def get_allow_time(request):
                     # Agregar la hora a la lista de horas disponibles si es válida
                     if is_available:
                         available_hour = {
-                            "fecha_inicio": current_time.strftime('%Y-%m-%d %H:%M'),
-                            "fecha_fin": (current_time + timedelta(minutes=time_service)).strftime('%Y-%m-%d %H:%M')
+                            "start_time": current_time.strftime('%Y-%m-%d %H:%M'),
+                            "end_time": (current_time + timedelta(minutes=time_service)).strftime('%Y-%m-%d %H:%M')
                         }
                         available_hours.append(available_hour)
 
