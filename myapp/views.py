@@ -409,10 +409,6 @@ def get_allow_time(request):
             # Convertir la fecha de string a un objeto datetime
             day_date = datetime.strptime(day, '%d/%m/%Y')
 
-            # Configurar el locale a español para obtener el día de la semana en ese idioma
-            # Puede ser necesario ajustar esta configuración dependiendo del entorno del servidor
-            locale.setlocale(locale.LC_TIME, 'es_ES.UTF-8')
-
             try:
                 # Intentar configurar el locale a español
                 locale.setlocale(locale.LC_TIME, 'spanish')
