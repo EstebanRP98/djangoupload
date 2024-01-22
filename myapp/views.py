@@ -20,6 +20,7 @@ from datetime import datetime, timedelta
 from dateutil import parser
 from decouple import config
 from .forms import DocumentoForm
+import locale
 
 mongodb_connector = MongoDBConnector()
 os.environ["OPENAI_API_KEY"] = config('OPENAI_API_KEY')
@@ -405,13 +406,25 @@ def get_allow_time(request):
             # Convertir a entero (default 0)
             time_service = int(request.GET.get('time_service', 0))
 
+            # Convertir la fecha de string a un objeto datetime
+            day_date = datetime.strptime(day, '%d/%m/%Y')
+
+            # Configurar el locale a español para obtener el día de la semana en ese idioma
+            # Puede ser necesario ajustar esta configuración dependiendo del entorno del servidor
+            locale.setlocale(locale.LC_TIME, 'es_ES.UTF-8')
+
+            # Obtener el nombre del día de la semana
+            day_name = day_date.strftime('%A').upper()
+
             if not venture_id or not day:
                 return JsonResponse({'error': 'Venture ID y día son parámetros requeridos'}, status=400)
 
             collection_time_venture = mongodb_connector.get_collection(
                 'time_venture')
             time_venture = collection_time_venture.find_one(
-                {'venture_id': venture_id})
+                {'venture_id': venture_id, 'day': day_name})
+
+            print(time_venture)
 
             if not time_venture:
                 return JsonResponse({'error': 'Venture no encontrado'}, status=404)
