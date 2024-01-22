@@ -413,8 +413,17 @@ def get_allow_time(request):
             # Puede ser necesario ajustar esta configuración dependiendo del entorno del servidor
             locale.setlocale(locale.LC_TIME, 'es_ES.UTF-8')
 
-            # Obtener el nombre del día de la semana
-            day_name = day_date.strftime('%A').upper()
+            try:
+                # Intentar configurar el locale a español
+                locale.setlocale(locale.LC_TIME, 'spanish')
+            except locale.Error:
+                # Si falla, usar un método alternativo
+                days = ['LUNES', 'MARTES', 'MIÉRCOLES',
+                        'JUEVES', 'VIERNES', 'SÁBADO', 'DOMINGO']
+                day_name = days[day_date.weekday()]
+            else:
+                # Si el locale se configura con éxito
+                day_name = day_date.strftime('%A').upper()
 
             if not venture_id or not day:
                 return JsonResponse({'error': 'Venture ID y día son parámetros requeridos'}, status=400)
@@ -479,8 +488,8 @@ def get_allow_time(request):
                     # Agregar la hora a la lista de horas disponibles si es válida
                     if is_available:
                         available_hour = {
-                            "fecha_inicio": current_time.strftime('%Y-%m-%d %H:%M'),
-                            "fecha_fin": (current_time + timedelta(minutes=time_service)).strftime('%Y-%m-%d %H:%M')
+                            "start_time": current_time.strftime('%Y-%m-%d %H:%M'),
+                            "end_time": (current_time + timedelta(minutes=time_service)).strftime('%Y-%m-%d %H:%M')
                         }
                         available_hours.append(available_hour)
 
