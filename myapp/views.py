@@ -265,7 +265,7 @@ def save_time_venture(request):
             day = data.get('day')
             time_ranges = data.get('time_ranges')
 
-            if venture_id and day and time_ranges:
+            if venture_id and day:
                 collection_time_venture = mongodb_connector.get_collection(
                     'time_venture')
                 # Check if a document for the company already exists
@@ -273,21 +273,31 @@ def save_time_venture(request):
                     {'venture_id': venture_id, 'day': day})
 
                 if existing_document:
-                    # If it exists, update the time ranges
-                    collection_time_venture.update_one(
-                        {'venture_id': venture_id, 'day': day},
-                        {'$set': {'time_ranges': time_ranges}}
-                    )
-                    return JsonResponse({'message': 'Time ranges updated successfully'})
+                    # Si time_ranges es null, elimina el documento
+                    if time_ranges is None or (isinstance(time_ranges, list) and not time_ranges):
+                        collection_time_venture.delete_one(
+                            {'venture_id': venture_id, 'day': day})
+                        return JsonResponse({'message': 'Time venture document deleted successfully'})
+                    else:
+                        # Si time_ranges no es null, actualiza los time_ranges
+                        collection_time_venture.update_one(
+                            {'venture_id': venture_id, 'day': day},
+                            {'$set': {'time_ranges': time_ranges}}
+                        )
+                        return JsonResponse({'message': 'Time ranges updated successfully'})
                 else:
-                    # If it doesn't exist, create a new time_venture document
-                    time_venture = {
-                        'venture_id': venture_id,
-                        'day': day,
-                        'time_ranges': time_ranges
-                    }
-                    result = collection_time_venture.insert_one(time_venture)
-                    return JsonResponse({'message': 'time_venture document saved successfully', 'document_id': str(result.inserted_id)})
+                    # Si no existe, crea un nuevo documento time_venture
+                    if time_ranges is not None and (not isinstance(time_ranges, list) or time_ranges):
+                        time_venture = {
+                            'venture_id': venture_id,
+                            'day': day,
+                            'time_ranges': time_ranges
+                        }
+                        result = collection_time_venture.insert_one(
+                            time_venture)
+                        return JsonResponse({'message': 'time_venture document saved successfully', 'document_id': str(result.inserted_id)})
+                    else:
+                        return JsonResponse({'error': 'time_ranges is required for new documents'}, status=400)
             else:
                 return JsonResponse({'error': 'Incomplete data'}, status=400)
         except json.JSONDecodeError:
