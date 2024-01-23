@@ -354,9 +354,10 @@ def save_schedule_venture(request):
             date_finish = data.get('date_finish')
             status = data.get('status')
             venture_id = data.get('venture_id')
+            client = data.get('client')
             services = data.get('services')
 
-            if schedule_id and date_init and status and venture_id and services:
+            if schedule_id and date_init and status and venture_id and services and client:
                 # Crear una conexión a la base de datos MongoDB
                 collection_schedule_venture = mongodb_connector.get_collection(
                     'schedule_venture')
@@ -372,7 +373,8 @@ def save_schedule_venture(request):
                     'date_finish': date_finish,
                     'status': status,
                     'venture_id': venture_id,
-                    'services': services
+                    'services': services,
+                    'client': client
                 }
 
                 if existing_document:
@@ -405,6 +407,8 @@ def get_allow_time(request):
             day = request.GET.get('day')
             # Convertir a entero (default 0)
             time_service = int(request.GET.get('time_service', 0))
+
+            output_format = '%Y-%m-%d %H:%M'
 
             # Convertir la fecha de string a un objeto datetime
             day_date = datetime.strptime(day, '%d/%m/%Y')
@@ -439,10 +443,9 @@ def get_allow_time(request):
             day_datetime = parser.parse(day)
 
             # Inicio y fin del día en formato UTC para la consulta
-            day_start_utc = day_datetime.replace(
-                hour=0, minute=0, second=0, microsecond=0).isoformat()
-            day_end_utc = day_datetime.replace(
-                hour=23, minute=59, second=59, microsecond=999999).isoformat()
+            day_start_utc = day_datetime.strftime(output_format)
+            day_end_utc = (day_datetime.replace(
+                hour=23, minute=59, second=0)).strftime(output_format)
 
             collection_schedule_venture = mongodb_connector.get_collection(
                 'schedule_venture')
