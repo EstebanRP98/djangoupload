@@ -56,9 +56,9 @@ def save_or_update_venture(request, venture_id=None):
                 venture_id = collection.insert_one(venture_data).inserted_id
                 return JsonResponse({'message': 'Venture saved successfully', 'venture_id': str(venture_id)})
         except json.JSONDecodeError:
-            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+            return JsonResponse({'message': 'Invalid JSON'}, status=400)
     else:
-        return JsonResponse({'error': 'Invalid request'}, status=400)
+        return JsonResponse({'message': 'Invalid request'}, status=400)
 
 
 @csrf_exempt
@@ -84,11 +84,11 @@ def get_chat_by_user_id(request):
                 chat_user['chat_history'] = chat_history
                 return JsonResponse(chat_user, status=200)
             else:
-                return JsonResponse({'error': 'El usuario no tiene un chat'}, status=404)
+                return JsonResponse({'message': 'El usuario no tiene un chat'}, status=404)
         else:
-            return JsonResponse({'error': 'ID de usuario no proporcionado'}, status=400)
+            return JsonResponse({'message': 'ID de usuario no proporcionado'}, status=400)
     else:
-        return JsonResponse({'error': 'Invalid request'}, status=400)
+        return JsonResponse({'message': 'Invalid request'}, status=400)
 
 
 @csrf_exempt
@@ -138,9 +138,9 @@ def get_venture_by_name(request):
         if venture:
             return JsonResponse({'name': venture['name'], 'answer': result["answer"]})
         else:
-            return JsonResponse({'error': 'Venture not found'}, status=404)
+            return JsonResponse({'message': 'Venture not found'}, status=404)
     else:
-        return JsonResponse({'error': 'Invalid request'}, status=400)
+        return JsonResponse({'message': 'Invalid request'}, status=400)
 
 
 @csrf_exempt
@@ -182,7 +182,7 @@ def upload_pdf(request):
 
         return JsonResponse({'message': 'PDF uploaded and venture saved successfully', 'venture_id': str(venture_id)})
     else:
-        return JsonResponse({'error': 'Invalid request'}, status=400)
+        return JsonResponse({'message': 'Invalid request'}, status=400)
 
 
 def generar_id_aleatorio():
@@ -222,7 +222,7 @@ def agregar_mensaje(role_chat, message, user_id):
 
         return JsonResponse({'message': 'Mensaje agregado con éxito'})
     else:
-        return JsonResponse({'error': 'Datos de mensaje incompletos'}, status=400)
+        return JsonResponse({'message': 'Datos de mensaje incompletos'}, status=400)
 
 
 def obtener_conversacion(user_id):
@@ -298,13 +298,13 @@ def save_time_venture(request):
                             time_venture)
                         return JsonResponse({'message': 'time_venture document saved successfully', 'document_id': str(result.inserted_id)})
                     else:
-                        return JsonResponse({'error': 'time_ranges is required for new documents'}, status=400)
+                        return JsonResponse({'message': 'time_ranges is required for new documents'}, status=400)
             else:
-                return JsonResponse({'error': 'Incomplete data'}, status=400)
+                return JsonResponse({'message': 'Incomplete data'}, status=400)
         except json.JSONDecodeError:
-            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+            return JsonResponse({'message': 'Invalid JSON'}, status=400)
     else:
-        return JsonResponse({'error': 'Invalid request'}, status=400)
+        return JsonResponse({'message': 'Invalid request'}, status=400)
 
 
 @csrf_exempt
@@ -314,7 +314,7 @@ def get_time_venture_by_company_name(request, venture_id):
             # Obtener el parámetro venture_id, que siempre está presente
             # Verificar si se proporcionó venture_id
             if not venture_id:
-                return JsonResponse({'error': 'El parámetro venture_id es requerido'}, status=400)
+                return JsonResponse({'message': 'El parámetro venture_id es requerido'}, status=400)
 
             # Obtener el parámetro day, que es opcional
             day = request.GET.get('day')
@@ -339,9 +339,9 @@ def get_time_venture_by_company_name(request, venture_id):
             return JsonResponse(time_ventures, safe=False)
 
         except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
+            return JsonResponse({'message': str(e)}, status=500)
     else:
-        return JsonResponse({'error': 'Invalid request'}, status=400)
+        return JsonResponse({'message': 'Invalid request'}, status=400)
 
 
 @csrf_exempt
@@ -377,26 +377,33 @@ def save_schedule_venture(request):
                     'client': client
                 }
 
+                overlap = check_time_overlap(
+                    venture_id, date_init, date_finish)
+
                 if existing_document:
                     # Si existe, actualizar el documento
+                    if overlap and (date_init != existing_document['date_init'] or date_finish != existing_document['date_finish']):
+                        return JsonResponse({'message': 'La cita ya ha sido seleccionada por otro usuario'})
                     collection_schedule_venture.update_one(
                         {'schedule_id': schedule_id},
                         {'$set': schedule_venture}
                     )
                     return JsonResponse({'message': 'Documento schedule_venture actualizado con éxito'})
                 else:
+                    if overlap:
+                        return JsonResponse({'message': 'La cita ya ha sido seleccionada por otro usuario'})
                     # Si no existe, insertar un nuevo documento
                     result = collection_schedule_venture.insert_one(
                         schedule_venture)
                     return JsonResponse({'message': 'Documento schedule_venture guardado con éxito', 'document_id': str(result.inserted_id)})
             else:
-                return JsonResponse({'error': 'Datos incompletos'}, status=400)
+                return JsonResponse({'message': 'Datos incompletos'}, status=400)
         except json.JSONDecodeError:
-            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+            return JsonResponse({'message': 'Invalid JSON'}, status=400)
         except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
+            return JsonResponse({'message': str(e)}, status=500)
     else:
-        return JsonResponse({'error': 'Invalid request'}, status=400)
+        return JsonResponse({'message': 'Invalid request'}, status=400)
 
 
 def get_allow_time(request):
@@ -426,7 +433,7 @@ def get_allow_time(request):
                 day_name = day_date.strftime('%A').upper()
 
             if not venture_id or not day:
-                return JsonResponse({'error': 'Venture ID y día son parámetros requeridos'}, status=400)
+                return JsonResponse({'message': 'Venture ID y día son parámetros requeridos'}, status=400)
 
             collection_time_venture = mongodb_connector.get_collection(
                 'time_venture')
@@ -434,7 +441,7 @@ def get_allow_time(request):
                 {'venture_id': venture_id, 'day': day_name})
 
             if not time_venture:
-                return JsonResponse({'error': 'Venture no encontrado'}, status=404)
+                return JsonResponse({'message': 'Venture no encontrado'}, status=404)
 
             # Obtener las horas de trabajo del venture
             working_hours = time_venture.get('time_ranges', [])
@@ -496,9 +503,9 @@ def get_allow_time(request):
 
             return JsonResponse({'available_hours': available_hours})
         except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
+            return JsonResponse({'message': str(e)}, status=500)
     else:
-        return JsonResponse({'error': 'Invalid request'}, status=400)
+        return JsonResponse({'message': 'Invalid request'}, status=400)
 
 
 def make_naive(dt):
@@ -550,9 +557,9 @@ def get_schedule_venture(request):
 
             return JsonResponse({'schedule_venture': results})
         except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
+            return JsonResponse({'message': str(e)}, status=500)
     else:
-        return JsonResponse({'error': 'Invalid request'}, status=400)
+        return JsonResponse({'message': 'Invalid request'}, status=400)
 
 
 @csrf_exempt
@@ -572,6 +579,42 @@ def subir_documento(request):
     else:
         form = DocumentoForm()
     return JsonResponse({'mensaje': 'Método no permitideishon'}, status=405)
+
+
+def check_time_overlap(venture_id, start_time_str, end_time_str):
+    try:
+        # Validar que los parámetros necesarios estén presentes
+        if not venture_id or not start_time_str or not end_time_str:
+            raise ValueError(
+                "Venture ID, start time y end time son parámetros requeridos")
+
+        # Convertir los strings de tiempo a objetos datetime
+        start_time = parser.parse(start_time_str)
+        end_time = parser.parse(end_time_str)
+
+        collection_schedule_venture = mongodb_connector.get_collection(
+            'schedule_venture')
+        # Consulta a MongoDB para obtener citas programadas
+        scheduled_appointments = list(collection_schedule_venture.find({
+            'venture_id': venture_id,
+            'date_init': {'$lt': end_time_str},
+            'date_finish': {'$gt': start_time_str}
+        }))
+
+        # Verificar si hay algún solapamiento
+        for appointment in scheduled_appointments:
+            appointment_start = parser.parse(appointment['date_init'])
+            appointment_end = parser.parse(appointment.get(
+                'date_finish', appointment['date_init']))
+
+            if start_time < appointment_end and end_time > appointment_start:
+                # Se encontró un solapamiento
+                return True
+
+        # No se encontró solapamiento
+        return False
+    except Exception as e:
+        raise Exception(f"Error al verificar el solapamiento: {str(e)}")
 
 
 @firebase_auth_required
