@@ -571,7 +571,7 @@ def get_schedule_venture(request):
             for result in results:
                 result['_id'] = str(result['_id'])
 
-            return JsonResponse({'schedule_venture': results})
+            return JsonResponse({'events': results})
         except Exception as e:
             return JsonResponse({'message': str(e)}, status=500)
     else:
