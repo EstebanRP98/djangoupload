@@ -399,7 +399,7 @@ def save_schedule_venture(request):
                 if existing_document:
                     # Si existe, actualizar el documento
                     if overlap and (start_time != existing_document['start_time'] or end_time != existing_document['end_time']):
-                        return JsonResponse({'message': 'La cita ya ha sido seleccionada por otro usuario'})
+                        return JsonResponse({'message': 'La cita ya ha sido seleccionada por otro usuario'}, status=400)
                     collection_schedule_venture.update_one(
                         {'schedule_id': schedule_id},
                         {'$set': schedule_venture}
@@ -407,7 +407,7 @@ def save_schedule_venture(request):
                     return JsonResponse({'message': 'Documento schedule_venture actualizado con éxito'})
                 else:
                     if overlap:
-                        return JsonResponse({'message': 'La cita ya ha sido seleccionada por otro usuario'})
+                        return JsonResponse({'message': 'La cita ya ha sido seleccionada por otro usuario'}, status=400)
                     # Si no existe, insertar un nuevo documento
                     result = collection_schedule_venture.insert_one(
                         schedule_venture)
