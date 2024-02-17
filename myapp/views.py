@@ -77,6 +77,9 @@ def get_chat_by_user_id(request):
                 # Ordenar los mensajes del chat del más antiguo al más actual
                 chat_history.sort(key=lambda x: x.get('timestamp', ''))
 
+                # Limitar a los últimos 10 mensajes
+                chat_history = chat_history[-20:]
+
                 # Convierte el ObjectId a una cadena antes de serializarlo
                 chat_user['_id'] = str(chat_user['_id'])
 
@@ -133,6 +136,7 @@ def get_venture_by_name(request):
                                                       return_source_documents=False,)
         result = chain(
             {"question": query, 'chat_history': chat_history}, return_only_outputs=True)
+        print(chat_history)
         agregar_mensaje("assistant", result["answer"], user_id)
 
         if venture:
@@ -350,14 +354,20 @@ def save_schedule_venture(request):
         try:
             data = json.loads(request.body)
             schedule_id = data.get('schedule_id')
-            date_init = data.get('date_init')
-            date_finish = data.get('date_finish')
+            start_time = data.get('start_time')
+            end_time = data.get('end_time')
             status = data.get('status')
             venture_id = data.get('venture_id')
             client = data.get('client')
             services = data.get('services')
+            visible = data.get('visible')
+            title = data.get('title')
+            description = data.get('description')
+            color = data.get('color')
+            location = data.get('location')
+            alert = data.get('alert')
 
-            if schedule_id and date_init and status and venture_id and services and client:
+            if schedule_id and start_time and status and venture_id and services and client:
                 # Crear una conexión a la base de datos MongoDB
                 collection_schedule_venture = mongodb_connector.get_collection(
                     'schedule_venture')
@@ -368,9 +378,15 @@ def save_schedule_venture(request):
 
                 # Crear el documento schedule_venture
                 schedule_venture = {
+                    'title': title,
+                    'visible': visible,
+                    'description': description,
+                    'color': color,
+                    'location': location,
+                    'alert': alert,
                     'schedule_id': schedule_id,
-                    'date_init': date_init,
-                    'date_finish': date_finish,
+                    'start_time': start_time,
+                    'end_time': end_time,
                     'status': status,
                     'venture_id': venture_id,
                     'services': services,
@@ -378,11 +394,11 @@ def save_schedule_venture(request):
                 }
 
                 overlap = check_time_overlap(
-                    venture_id, date_init, date_finish)
+                    venture_id, start_time, end_time)
 
                 if existing_document:
                     # Si existe, actualizar el documento
-                    if overlap and (date_init != existing_document['date_init'] or date_finish != existing_document['date_finish']):
+                    if overlap and (start_time != existing_document['start_time'] or end_time != existing_document['end_time']):
                         return JsonResponse({'message': 'La cita ya ha sido seleccionada por otro usuario'})
                     collection_schedule_venture.update_one(
                         {'schedule_id': schedule_id},
@@ -441,7 +457,7 @@ def get_allow_time(request):
                 {'venture_id': venture_id, 'day': day_name})
 
             if not time_venture:
-                return JsonResponse({'message': 'Venture no encontrado'}, status=404)
+                return JsonResponse({'message': 'No hay citas para hoy'}, status=404)
 
             # Obtener las horas de trabajo del venture
             working_hours = time_venture.get('time_ranges', [])
@@ -459,7 +475,7 @@ def get_allow_time(request):
             # Consulta a MongoDB ajustada
             scheduled_appointments = list(collection_schedule_venture.find({
                 'venture_id': venture_id,
-                'date_init': {'$gte': day_start_utc, '$lt': day_end_utc}
+                'start_time': {'$gte': day_start_utc, '$lt': day_end_utc}
             }))
 
             # Calcular las horas disponibles
@@ -482,9 +498,9 @@ def get_allow_time(request):
                     is_available = True
                     for appointment in scheduled_appointments:
                         appointment_start = make_naive(parser.parse(
-                            appointment['date_init']))
+                            appointment['start_time']))
                         appointment_end = make_naive(parser.parse(appointment.get(
-                            'date_finish', appointment['date_init'])))
+                            'end_time', appointment['start_time'])))
 
                         # Verificar solapamiento
                         if current_time < appointment_end and current_time + timedelta(minutes=time_service) > appointment_start:
@@ -541,7 +557,7 @@ def get_schedule_venture(request):
                 day_end_utc = (day_datetime.replace(
                     hour=23, minute=59, second=0)).strftime(output_format)
 
-                filter_dict = {'date_init': {
+                filter_dict = {'start_time': {
                     '$gte': day_start_utc, '$lt': day_end_utc}}
             # Agregar filtros adicionales si se proporcionan
             if status_filter:
@@ -597,15 +613,15 @@ def check_time_overlap(venture_id, start_time_str, end_time_str):
         # Consulta a MongoDB para obtener citas programadas
         scheduled_appointments = list(collection_schedule_venture.find({
             'venture_id': venture_id,
-            'date_init': {'$lt': end_time_str},
-            'date_finish': {'$gt': start_time_str}
+            'start_time': {'$lt': end_time_str},
+            'end_time': {'$gt': start_time_str}
         }))
 
         # Verificar si hay algún solapamiento
         for appointment in scheduled_appointments:
-            appointment_start = parser.parse(appointment['date_init'])
+            appointment_start = parser.parse(appointment['start_time'])
             appointment_end = parser.parse(appointment.get(
-                'date_finish', appointment['date_init']))
+                'end_time', appointment['start_time']))
 
             if start_time < appointment_end and end_time > appointment_start:
                 # Se encontró un solapamiento
