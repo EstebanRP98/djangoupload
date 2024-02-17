@@ -367,7 +367,7 @@ def save_schedule_venture(request):
             location = data.get('location')
             alert = data.get('alert')
 
-            if schedule_id and start_time and status and venture_id and services and client:
+            if schedule_id and start_time and status and venture_id and client:
                 # Crear una conexión a la base de datos MongoDB
                 collection_schedule_venture = mongodb_connector.get_collection(
                     'schedule_venture')
