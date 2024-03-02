@@ -25,6 +25,7 @@ from decouple import config
 from .forms import DocumentoForm
 import locale
 import requests
+from . import views
 
 mongodb_connector = MongoDBConnector()
 os.environ["OPENAI_API_KEY"] = config('OPENAI_API_KEY')
@@ -58,8 +59,8 @@ def received_message(request):
             number = message["from"]
 
             print("este es el texto: ", question_user)
-
-            body_answer = plantilla_mensaje(question_user, number)
+            answer = message_chatbot(question_user, number)
+            body_answer = plantilla_mensaje(answer, number)
             send_message = whatsappService(body_answer)
 
             if send_message:
@@ -70,6 +71,55 @@ def received_message(request):
             return JsonResponse({'message': 'Invalid JSON'}, status=400)
     else:
         return JsonResponse({'message': 'Invalid request'}, status=400)
+
+
+def message_chatbot(mensaje, numero):
+
+    user_id = numero
+    name = "EMPRE-info"
+    query = mensaje
+
+    views.agregar_mensaje("user", query, user_id)
+    chat_history = views.obtener_conversacion(user_id)
+    collection = mongodb_connector.get_collection('ventures')
+
+    venture = collection.find_one({'name': name})
+
+    with open(venture['path'], 'rb') as f:
+        pdfsearch = pickle.load(f)
+
+    if 'prompt_template' in venture and venture['prompt_template']:
+        venture_prompt_value = venture['prompt_template']
+        venture_promt = f"""{venture_prompt_value}"""
+    else:
+        venture_promt = """Eres un robot de preguntas y respuestas, Utiliza los siguientes elementos de contexto para responder a la pregunta del final. Responde siempre los nombres de los emprendimientos con el simbolo @. 
+Si no sabes la respuesta, solo responde 'Lo siento, no lo sé', no intentes inventarte una respuesta. Responde de forma corta y precisa."""
+
+    prompt_template = venture_promt+"""
+
+    {context}
+
+    Question: {question}"""
+    PROMPT = PromptTemplate(
+        template=prompt_template, input_variables=["context", "question"]
+    )
+    chain = ConversationalRetrievalChain.from_llm(ChatOpenAI(temperature=0.3, model="gpt-3.5-turbo"),
+                                                  retriever=pdfsearch.as_retriever(
+        search_kwargs={"k": 6}),
+        combine_docs_chain_kwargs={
+        "prompt": PROMPT},
+        condense_question_llm=ChatOpenAI(
+        temperature=0, model='gpt-3.5-turbo'),
+        return_source_documents=False,)
+    result = chain(
+        {"question": query, 'chat_history': chat_history}, return_only_outputs=True)
+    print(chat_history)
+    views.agregar_mensaje("assistant", result["answer"], user_id)
+
+    if venture:
+        return result["answer"]
+    else:
+        return "lo siento por el momento no te puedo ayudar."
 
 
 def whatsappService(body):
@@ -100,7 +150,7 @@ def plantilla_mensaje(text, number):
         "to": number,
         "type": "text",
         "text": {
-            "body": "esta es la respuesta a la pregunta: "+text
+            "body": text
         }
     }
     return body
