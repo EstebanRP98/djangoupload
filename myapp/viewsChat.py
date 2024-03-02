@@ -34,7 +34,7 @@ chat_history = []
 
 
 @csrf_exempt
-def verify_token(request):
+def received_message(request):
     if request.method == 'GET':
         try:
             token = request.GET.get('hub.verify_token')
@@ -46,13 +46,7 @@ def verify_token(request):
                 return JsonResponse({'message': 'Error Access'}, status=400)
         except json.JSONDecodeError:
             return JsonResponse({'message': 'Invalid JSON'}, status=400)
-    else:
-        return JsonResponse({'message': 'Invalid request'}, status=400)
-
-
-@csrf_exempt
-def received_message(request):
-    if request.method == 'POST':
+    elif request.method == 'POST':
         try:
             body = json.loads(request.body)
             entry = body["entry"][0]
