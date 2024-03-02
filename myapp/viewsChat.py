@@ -9,8 +9,8 @@ import io
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.prompts import PromptTemplate
 from langchain.chains import ConversationalRetrievalChain
-from langchain.chat_models import ChatOpenAI
-from langchain.vectorstores import FAISS
+from langchain_community.chat_models import ChatOpenAI
+from langchain_community.vectorstores import FAISS
 from langchain.text_splitter import CharacterTextSplitter
 import pickle
 import os
@@ -26,6 +26,7 @@ from .forms import DocumentoForm
 import locale
 import requests
 from . import views
+from . import viewsAi
 
 mongodb_connector = MongoDBConnector()
 os.environ["OPENAI_API_KEY"] = config('OPENAI_API_KEY')
@@ -59,7 +60,7 @@ def received_message(request):
             number = message["from"]
 
             print("este es el texto: ", question_user)
-            answer = message_chatbot(question_user, number)
+            answer = viewsAi.message_chatbot(question_user, number)
             body_answer = plantilla_mensaje(answer, number)
             send_message = whatsappService(body_answer)
 
