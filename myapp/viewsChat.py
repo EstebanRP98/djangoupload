@@ -75,7 +75,7 @@ def received_message(request):
 def whatsappService(body):
     try:
         token = token_whatsapp
-        api_url = "https://graph.facebook.com/v18.0/196839136856334/messages"
+        api_url = "https://graph.facebook.com/v18.0/122097223070009858/messages"
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {token}"
