@@ -21,6 +21,7 @@ urlpatterns = [
          name='get_schedule_venture'),
     path('upload/', views.subir_documento, name='subir_documento'),
     path('health-check/', views.health_check, name='health_check'),
+    path('whatsapp/verify', viewsChat.verify_token, name='verify_token'),
     path('whatsapp', viewsChat.received_message, name='received_message'),
     path('message-intention/', viewsAi.message_intention, name='message_intention'),
     path('message-product/', viewsAi.message_products, name='message_product'),
