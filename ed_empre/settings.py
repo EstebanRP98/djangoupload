@@ -15,7 +15,6 @@ from decouple import config
 import os
 from pathlib import Path
 import sys
-__import__('pysqlite3')
 sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
