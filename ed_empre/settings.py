@@ -17,8 +17,8 @@ from decouple import config
 import firebase_admin
 from firebase_admin import credentials
 
-package__import__('pysqlite3')
-sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
+pysqlite3 = __import__('pysqlite3')
+sys.modules['sqlite3'] = pysqlite3
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
