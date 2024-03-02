@@ -1,6 +1,8 @@
 from django.urls import path, include
 from django.conf import settings
 from . import views
+from . import viewsAi
+from . import viewsChat
 from django.conf.urls.static import static
 
 urlpatterns = [
@@ -19,4 +21,9 @@ urlpatterns = [
          name='get_schedule_venture'),
     path('upload/', views.subir_documento, name='subir_documento'),
     path('health-check/', views.health_check, name='health_check'),
+    path('whatsapp', viewsChat.received_message, name='received_message'),
+    path('message-intention/', viewsAi.message_intention, name='message_intention'),
+    path('message-product/', viewsAi.message_products, name='message_product'),
+    path('entrenar/', viewsAi.entrenar_modelo_spicy,
+         name='entrenar_modelo_spicy'),
 ]

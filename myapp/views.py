@@ -16,6 +16,9 @@ import pickle
 import os
 import secrets
 import string
+import openai
+import numpy as np
+import tiktoken
 from datetime import datetime, timedelta
 from dateutil import parser
 from decouple import config
@@ -24,6 +27,7 @@ import locale
 
 mongodb_connector = MongoDBConnector()
 os.environ["OPENAI_API_KEY"] = config('OPENAI_API_KEY')
+openai.api_key = config('OPENAI_API_KEY')
 chat_history = []
 
 
@@ -258,6 +262,87 @@ def obtener_conversacion(user_id):
         return conversacion  # Retorna el array conversacion
     else:
         return []  # Retorna una lista vacía si el usuario no existe
+
+
+def generate_embedding(text):
+    response = openai.Embedding.create(
+        input=text,
+        model="text-embedding-3-small"
+    )
+    return response['data'][0]['embedding']
+
+# Función para encontrar la intención más cercana
+
+
+def calculate_cosine_similarity(vec1, vec2):
+    """
+    Calcula la similitud del coseno entre dos vectores.
+
+    :param vec1: Primer vector.
+    :param vec2: Segundo vector.
+    :return: Similitud del coseno entre vec1 y vec2.
+    """
+    # Calcula el producto punto de los dos vectores
+    dot_product = np.dot(vec1, vec2)
+    # Calcula la norma (magnitud) de cada vector
+    norm_vec1 = np.linalg.norm(vec1)
+    norm_vec2 = np.linalg.norm(vec2)
+    # Calcula la similitud del coseno
+    cosine_similarity = dot_product / (norm_vec1 * norm_vec2)
+    return cosine_similarity
+
+
+def num_tokens_from_string(string: str, encoding_name: str) -> int:
+    """Returns the number of tokens in a text string."""
+    encoding = tiktoken.get_encoding(encoding_name)
+    num_tokens = len(encoding.encode(string))
+    return num_tokens
+
+
+@csrf_exempt
+def message_intention(request):
+    if request.method == 'POST':
+        # Carga el cuerpo de la solicitud JSON
+        data = json.loads(request.body)
+        user_message = data.get('message', '')
+
+        # Frases de intención para generar embeddings
+        intention_phrases = {
+            "compra": ["Quiero comprar algunos artículos", "Necesito adquirir material"],
+            "disponibilidad": ["¿Tienen disponibles?", "Quiero saber si tienen en existencia"],
+            "orden_status": ["¿Cuál es el estado de mi pedido?", "Quiero saber el estado de mi compra"],
+        }
+
+        # Genera embeddings para el mensaje del usuario
+        user_message_embedding = openai.Embedding.create(
+            input=user_message,
+            model="text-embedding-3-small"
+        )["data"][0]["embedding"]
+
+        # Determinar la intención comparando los embeddings
+        best_intent = ''
+        highest_cosine = -1  # Inicializa con un valor bajo para similitud coseno
+
+        for intent, phrases in intention_phrases.items():
+            for phrase in phrases:
+                # Genera el embedding para la frase de intención
+                phrase_embedding = openai.Embedding.create(
+                    input=phrase,
+                    model="text-embedding-3-small"
+                )["data"][0]["embedding"]
+
+                # Calcula la similitud del coseno (esto es un placeholder, necesitarás una función real aquí)
+                cosine_similarity = calculate_cosine_similarity(
+                    user_message_embedding, phrase_embedding)
+
+                if cosine_similarity > highest_cosine:
+                    highest_cosine = cosine_similarity
+                    best_intent = intent
+
+        # Responde según la intención detectada
+        return JsonResponse({"intent": best_intent, "confidence": highest_cosine})
+
+    return JsonResponse({"error": "Invalid request"}, status=400)
 
 
 ################################################################# time_venture#############################
