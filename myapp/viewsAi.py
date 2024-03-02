@@ -1,3 +1,14 @@
+from pathlib import Path
+import random
+from spacy.training import Example
+from spacy.lang.es.examples import sentences
+import spacy
+from langchain.prompts import ChatPromptTemplate
+from langchain_community.vectorstores import FAISS
+from langchain_community.chat_models import ChatOpenAI
+from langchain.embeddings import OpenAIEmbeddings
+from langchain_community.vectorstores.chroma import Chroma
+import chromadb
 from django.http import JsonResponse
 from .decorators import firebase_auth_required
 from django.views.decorators.csrf import csrf_exempt
@@ -37,16 +48,9 @@ from langchain_community.embeddings.sentence_transformer import (
 from langchain_community.vectorstores import Chroma
 import argparse
 from dataclasses import dataclass
-from langchain_community.vectorstores.chroma import Chroma
-from langchain.embeddings import OpenAIEmbeddings
-from langchain_community.chat_models import ChatOpenAI
-from langchain_community.vectorstores import FAISS
-from langchain.prompts import ChatPromptTemplate
-import spacy
-from spacy.lang.es.examples import sentences
-from spacy.training import Example
-import random
-from pathlib import Path
+import pysqlite3
+import sys
+sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
 
 CHROMA_PATH = "chroma"
 
