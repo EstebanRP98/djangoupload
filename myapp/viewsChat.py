@@ -1,4 +1,4 @@
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from .decorators import firebase_auth_required
 from django.views.decorators.csrf import csrf_exempt
 import json
@@ -41,7 +41,7 @@ def verify_token(request):
             challenge = request.GET.get('hub.challenge')
             access_token = "myaccestoken"
             if token == access_token:
-                return challenge
+                return HttpResponse(challenge)  # Modifica esta línea
             else:
                 return JsonResponse({'message': 'Error Access'}, status=400)
         except json.JSONDecodeError:
