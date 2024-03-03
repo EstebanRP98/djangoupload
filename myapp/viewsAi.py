@@ -51,6 +51,12 @@ from pathlib import Path
 import os
 import shutil
 from langchain.document_loaders import DirectoryLoader
+import PyPDF2  # o puedes usar PyPDF2
+from sentence_transformers import SentenceTransformer
+import openai
+import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
+from openai import OpenAI
 
 CHROMA_PATH = "chroma"
 DATA_PATH = "/chat/data/pdf"
@@ -73,6 +79,84 @@ chat_history = []
 nlp = spacy.load("es_core_news_sm")
 
 
+def dividir_en_segmentos(texto, longitud_segmento=500):
+    palabras = texto.split()
+    segmentos = [' '.join(palabras[i:i + longitud_segmento])
+                 for i in range(0, len(palabras), longitud_segmento)]
+    return segmentos
+
+
+def encontrar_segmentos_relevantes(prompt_embedding, texto, n_segmentos=3):
+    segmentos = dividir_en_segmentos(texto)
+    segmentos_embeddings = np.array(
+        [obtener_embeddings(segmento) for segmento in segmentos])
+
+    # Calculando la similitud entre el prompt y cada segmento
+    similitudes = cosine_similarity(
+        prompt_embedding.reshape(1, -1), segmentos_embeddings)
+
+    # Encontrando los índices de los n_segmentos más relevantes
+    indices_relevantes = np.argsort(similitudes[0])[::-1][:n_segmentos]
+
+    # Recuperando los segmentos más relevantes
+    segmentos_relevantes = [segmentos[i] for i in indices_relevantes]
+    return " ".join(segmentos_relevantes)
+
+
+def chatbot_recomendador(pdf_path, prompt):
+    texto_pdf = extraer_texto(pdf_path)
+    client = OpenAI()
+    # Obtener embeddings del prompt
+    prompt_embedding = obtener_embeddings(prompt)
+
+    # Encontrar los segmentos más relevantes del texto
+    texto_relevante = encontrar_segmentos_relevantes(
+        prompt_embedding, texto_pdf)
+
+    # Pasar el texto relevante junto con el prompt al modelo GPT
+    respuesta = client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            # Contexto relevante como mensaje del sistema
+            {"role": "system", "content": texto_relevante},
+            # La pregunta o solicitud del usuario
+            {"role": "user", "content": prompt}
+        ],
+        max_tokens=150
+    )
+
+    # Accediendo a la respuesta
+    texto_respuesta = respuesta.choices[0].message.content.strip()
+    return texto_respuesta
+
+
+def extraer_texto(pdf_path):
+    texto = ""
+    with open(pdf_path, "rb") as f:
+        pdf = PyPDF2.PdfReader(f)
+        for pagina in range(len(pdf.pages)):
+            texto += pdf.pages[pagina].extract_text()
+    return texto
+
+
+modelo_embedding = SentenceTransformer('all-MiniLM-L6-v2')
+
+
+def obtener_embeddings(texto):
+    return modelo_embedding.encode(texto)
+
+
+def chatbot_gpt(prompt, archivos_embeddings):
+    # Aquí puedes integrar lógica para usar embeddings y determinar la relevancia con el prompt
+    # Por simplificación, solo estamos pasando el prompt a GPT-3.5 directamente
+    respuesta = openai.Completion.create(
+        engine="gpt-3.5-turbo",
+        prompt=prompt,
+        max_tokens=150
+    )
+    return respuesta.choices[0].text.strip()
+
+
 def message_chatbot(mensaje, numero):
 
     user_id = numero
@@ -80,31 +164,14 @@ def message_chatbot(mensaje, numero):
     query_text = mensaje
 
     # Prepare the DB.
-    embedding_function = OpenAIEmbeddings()
-    db = Chroma(persist_directory=CHROMA_PATH,
-                embedding_function=embedding_function)
+    pdf_path = "/home/ubuntu/djangoupload/myapp/chat/pdf/EMPRE-info.pdf"
+    # pdf_path = r"C:\Users\david\Documents\Python\ed_empre\myapp\chat\pdf\EMPRE-info.pdf"
+    prompt = mensaje
+    respuesta_chatbot = chatbot_recomendador(pdf_path, prompt)
+    print(respuesta_chatbot)
 
-    # Search the DB.
-    results = db.similarity_search_with_relevance_scores(query_text, k=3)
-    if len(results) == 0 or results[0][1] < 0.7:
-        print(f"Unable to find matching results.")
-        return
-
-    context_text = "\n\n---\n\n".join(
-        [doc.page_content for doc, _score in results])
-    prompt_template = ChatPromptTemplate.from_template(PROMPT_TEMPLATE)
-    prompt = prompt_template.format(context=context_text, question=query_text)
-    print(prompt)
-
-    model = ChatOpenAI()
-    response_text = model.predict(prompt)
-
-    sources = [doc.metadata.get("source", None) for doc, _score in results]
-    formatted_response = f"Response: {response_text}\nSources: {sources}"
-    print(formatted_response)
-
-    if formatted_response:
-        return formatted_response
+    if respuesta_chatbot:
+        return respuesta_chatbot
     else:
         return "lo siento por el momento no te puedo ayudar."
 
