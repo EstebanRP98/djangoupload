@@ -41,18 +41,23 @@ from langchain_community.vectorstores.chroma import Chroma
 from langchain.embeddings import OpenAIEmbeddings
 from langchain_community.chat_models import ChatOpenAI
 from langchain_community.vectorstores import FAISS
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.prompts import ChatPromptTemplate
 import spacy
 from spacy.lang.es.examples import sentences
 from spacy.training import Example
 import random
 from pathlib import Path
+import os
+import shutil
+from langchain.document_loaders import DirectoryLoader
 
 CHROMA_PATH = "chroma"
+DATA_PATH = "/chat/data/pdf"
 
 PROMPT_TEMPLATE = """
 Answer the question based only on the following context:
-Recuerda eres un mesero que debe tomar los pedidos que se encarguen
+Recuerda eres un chatbot, se cordial y saluda
 
 {context}
 

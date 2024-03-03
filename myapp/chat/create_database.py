@@ -9,7 +9,7 @@ from typing import List
 from decouple import config
 
 CHROMA_PATH = "chroma"
-DATA_PATH = "./myapp/chat/data/books"
+DATA_PATH = "./myapp/chat/pdf"
 os.environ["OPENAI_API_KEY"] = config('OPENAI_API_KEY')
 
 
@@ -24,7 +24,7 @@ def generate_data_store():
 
 
 def load_documents():
-    loader = DirectoryLoader(DATA_PATH, glob="*.md")
+    loader = DirectoryLoader(DATA_PATH, glob="*.pdf")
     documents = loader.load()
     return documents
 
