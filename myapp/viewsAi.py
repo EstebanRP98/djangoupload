@@ -56,6 +56,7 @@ import openai
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 from openai import OpenAI
+from langchain_community.document_loaders import PyPDFLoader
 
 CHROMA_PATH = "chroma"
 DATA_PATH = "/chat/data/pdf"
@@ -78,71 +79,19 @@ chat_history = []
 nlp = spacy.load("es_core_news_sm")
 
 
-def dividir_en_segmentos(texto, longitud_segmento=500):
-    palabras = texto.split()
-    segmentos = [' '.join(palabras[i:i + longitud_segmento])
-                 for i in range(0, len(palabras), longitud_segmento)]
-    return segmentos
-
-
-def encontrar_segmentos_relevantes(prompt_embedding, texto, n_segmentos=3):
-    segmentos = dividir_en_segmentos(texto)
-    segmentos_embeddings = np.array(
-        [obtener_embeddings(segmento) for segmento in segmentos])
-
-    # Calculando la similitud entre el prompt y cada segmento
-    similitudes = cosine_similarity(
-        prompt_embedding.reshape(1, -1), segmentos_embeddings)
-
-    # Encontrando los índices de los n_segmentos más relevantes
-    indices_relevantes = np.argsort(similitudes[0])[::-1][:n_segmentos]
-
-    # Recuperando los segmentos más relevantes
-    segmentos_relevantes = [segmentos[i] for i in indices_relevantes]
-    return " ".join(segmentos_relevantes)
-
-
-def chatbot_recomendador(pdf_path, prompt):
-    texto_pdf = extraer_texto(pdf_path)
-    client = OpenAI()
-    # Obtener embeddings del prompt
-    prompt_embedding = obtener_embeddings(prompt)
-
-    # Encontrar los segmentos más relevantes del texto
-    texto_relevante = encontrar_segmentos_relevantes(
-        prompt_embedding, texto_pdf)
-
-    # Pasar el texto relevante junto con el prompt al modelo GPT
-    respuesta = client.chat.completions.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            # Contexto relevante como mensaje del sistema
-            {"role": "system", "content": texto_relevante},
-            # La pregunta o solicitud del usuario
-            {"role": "user", "content": prompt}
-        ],
-        max_tokens=150
+def extraer_texto():
+    # pdf_path = "/home/ubuntu/djangoupload/myapp/chat/pdf/EMPRE-info.pdf"
+    pdf_path = r"C:\Users\david\Documents\Python\ed_empre\myapp\chat\pdf\EMPRE-info.pdf"
+    loader = PyPDFLoader(pdf_path)
+    documents = loader.load()
+    text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    documents = text_splitter.split_documents(documents)
+    vectordb = Chroma.from_documents(
+        documents,
+        embedding=OpenAIEmbeddings(),
+        persist_directory='./data'
     )
-
-    # Accediendo a la respuesta
-    texto_respuesta = respuesta.choices[0].message.content.strip()
-    return texto_respuesta
-
-
-def extraer_texto(pdf_path):
-    texto = ""
-    with open(pdf_path, "rb") as f:
-        pdf = PyPDF2.PdfReader(f)
-        for pagina in range(len(pdf.pages)):
-            texto += pdf.pages[pagina].extract_text()
-    return texto
-
-
-modelo_embedding = SentenceTransformerEmbeddings()
-
-
-def obtener_embeddings(texto):
-    return modelo_embedding.encode(texto)
+    vectordb.persist()
 
 
 def chatbot_gpt(prompt, archivos_embeddings):
@@ -160,16 +109,37 @@ def message_chatbot(mensaje, numero):
 
     user_id = numero
     name = "EMPRE-info"
-    query_text = mensaje
+    query = mensaje
 
     # Prepare the DB.
     pdf_path = "/home/ubuntu/djangoupload/myapp/chat/pdf/EMPRE-info.pdf"
-    # pdf_path = r"C:\Users\david\Documents\Python\ed_empre\myapp\chat\pdf\EMPRE-info.pdf"
-    prompt = mensaje
-    respuesta_chatbot = chatbot_recomendador(pdf_path, prompt)
-    print(respuesta_chatbot)
+    # pdf_path = r"C:\Users\david\Documents\Python\ed_empre\media\EMPRE-info.pkl"
+    with open(pdf_path, 'rb') as f:
+        pdfsearch = pickle.load(f)
+    venture_promt = """Eres un robot de preguntas y respuestas, Utiliza los siguientes elementos de contexto para responder a la pregunta del final. Responde siempre los nombres de los emprendimientos con el simbolo @. 
+    Si no sabes la respuesta, solo responde 'Lo siento, no lo sé', no intentes inventarte una respuesta. Responde de forma corta y precisa."""
+    prompt_template = venture_promt+"""
 
+        {context}
+
+        Question: {question}"""
+    PROMPT = PromptTemplate(
+        template=prompt_template, input_variables=["context", "question"]
+    )
+    pdf_qa = ConversationalRetrievalChain.from_llm(ChatOpenAI(temperature=0.3, model="gpt-3.5-turbo"),
+                                                   retriever=pdfsearch.as_retriever(
+        search_kwargs={"k": 6}),
+        combine_docs_chain_kwargs={
+        "prompt": PROMPT},
+        condense_question_llm=ChatOpenAI(
+        temperature=0, model='gpt-3.5-turbo'),
+        return_source_documents=False,)
+    result = pdf_qa.invoke(
+        {"question": query, "chat_history": chat_history})
+    print(result["answer"])
+    respuesta_chatbot = result["answer"]
     if respuesta_chatbot:
+        chat_history.append((query, result["answer"]))
         return respuesta_chatbot
     else:
         return "lo siento por el momento no te puedo ayudar."

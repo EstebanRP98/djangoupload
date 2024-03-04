@@ -62,8 +62,8 @@ def received_message(request):
             print("este es el texto: ", question_user)
             answer = viewsAi.message_chatbot(question_user, number)
             body_answer = plantilla_mensaje(answer, number)
-            send_message = whatsappService(body_answer)
-
+            # send_message = whatsappService(body_answer)
+            send_message = ""
             if send_message:
                 return JsonResponse({'message': "Mensaje enviado correctamente"})
             else:
