@@ -52,7 +52,6 @@ import os
 import shutil
 from langchain.document_loaders import DirectoryLoader
 import PyPDF2  # o puedes usar PyPDF2
-from sentence_transformers import SentenceTransformer
 import openai
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
@@ -139,7 +138,7 @@ def extraer_texto(pdf_path):
     return texto
 
 
-modelo_embedding = SentenceTransformer('all-MiniLM-L6-v2')
+modelo_embedding = SentenceTransformerEmbeddings()
 
 
 def obtener_embeddings(texto):
