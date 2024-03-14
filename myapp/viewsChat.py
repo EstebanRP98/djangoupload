@@ -13,6 +13,13 @@ from decouple import config
 import requests
 from . import views
 
+# chat
+from langchain_community.document_loaders import PyPDFLoader
+from langchain_openai import OpenAIEmbeddings
+from langchain.vectorstores import Chroma
+from langchain.chains import RetrievalQA
+from langchain.agents import initialize_agent, Tool
+
 mongodb_connector = MongoDBConnector()
 os.environ["OPENAI_API_KEY"] = config('OPENAI_API_KEY')
 openai.api_key = config('OPENAI_API_KEY')
@@ -140,3 +147,146 @@ def plantilla_mensaje(text, number):
         }
     }
     return body
+
+# chat
+
+
+def generate_data(request):
+    if request.method == 'GET':
+        # pdf_path_info = "/home/ubuntu/djangoupload/myapp/chat/pdf/Info.pdf"
+        # pdf_path_suport = "/home/ubuntu/djangoupload/myapp/chat/pdf/Sleep_2.pdf"
+        pdf_path_info = r"C:\Users\david\Documents\Python\ed_empre\myapp\chat\pdf\Info.pdf"
+        pdf_path_suport = r"C:\Users\david\Documents\Python\ed_empre\myapp\chat\pdf\Sleep_2.pdf"
+        loader = PyPDFLoader(pdf_path_info)
+        kb_data = loader.load_and_split()
+        loader = PyPDFLoader(pdf_path_suport)
+        medium_data_split = loader.load_and_split()
+
+        embeddings = OpenAIEmbeddings(
+            model="text-embedding-ada-002", chunk_size=1)
+
+        sales_data = kb_data
+        sales_store = Chroma.from_documents(
+            sales_data, embeddings, persist_directory="./db/sales"
+        )
+
+        support_data = medium_data_split
+        support_store = Chroma.from_documents(
+            support_data, embeddings, persist_directory="./db/info"
+        )
+        return JsonResponse({'message': "ok"})
+    else:
+        return JsonResponse({'message': 'Invalid request'}, status=400)
+
+
+@csrf_exempt
+def chat_agent(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        query = data.get('question')
+        data = generate_agent(query)
+        return JsonResponse({'message': data['output']})
+    else:
+        return JsonResponse({'message': 'Invalid request'}, status=400)
+
+
+def generate_agent(message):
+    embeddings = OpenAIEmbeddings(
+        model="text-embedding-ada-002", chunk_size=1)
+    sales_store = Chroma(persist_directory="./sales",
+                         embedding_function=embeddings)
+    support_store = Chroma(persist_directory="./info",
+                           embedding_function=embeddings)
+
+    llm = ChatOpenAI(
+        model_name="gpt-3.5-turbo",
+        temperature=0,
+        openai_api_key=openai.api_key,
+        max_tokens=512,
+    )
+    sales_template = """Como bot de marketing de Sleep Haven, tu objetivo es proporcionar información precisa y útil sobre Sleep Haven,
+    es una empresa de colchones de primera calidad que proporciona a sus clientes la experiencia de descanso más cómoda y confortable posible. Ofrecemos una gama de colchones, almohadas y accesorios de cama de alta calidad diseñados para satisfacer las necesidades únicas de nuestros clientes.
+    Debes responder a las preguntas de los usuarios basándote en el contexto proporcionado y evitar inventar respuestas.
+    Si no conoces la respuesta, simplemente di que no la conoces.
+    Recuerde proporcionar información relevante sobre las características, ventajas y casos de uso de Sleep Haven.
+
+    {context}
+
+    Question: {question}"""
+    SALES_PROMPT = PromptTemplate(
+        template=sales_template, input_variables=["context", "question"]
+    )
+    sales_qa = RetrievalQA.from_chain_type(
+        llm=llm,
+        chain_type="stuff",
+        retriever=sales_store.as_retriever(),
+        chain_type_kwargs={"prompt": SALES_PROMPT},
+    )
+    support_template = """
+    Como Bot de Marketing de Sleep haven,
+    Si saluda debes saludar muy respetuosamente, si se despide dile que puede visitar la pagina para comprar si tiene alguna duda.
+    tu objetivo es detectar las siguientes intenciones, y dar como respuesta sus acciones:
+    si el usuario quiere agendar una cita para comprar, respondele de forma muy contenta y amigable y enviale este link:
+    - www.deroapp.com/agendar
+    si el usuario quiere comprar directamente enviale el link de la pagina que es la siguiente:
+    - www.deroappec.com/shop
+
+    {context}
+
+    Question: {question}"""
+
+    SUPPORT_PROMPT = PromptTemplate(
+        template=support_template, input_variables=["context", "question"]
+    )
+
+    support_qa = RetrievalQA.from_chain_type(
+        llm=llm,
+        chain_type="stuff",
+        retriever=support_store.as_retriever(),
+        chain_type_kwargs={"prompt": SUPPORT_PROMPT},
+    )
+
+    meet_template = """Como bot de marketing de Sleep Haven, tu objetivo es saludar con el usuario,
+    presentarte como Luis Borja que le puedes ayudar en cualquier pregunta que tenga.
+
+    {context}
+
+    Question: {question}"""
+    MEET_PROMPT = PromptTemplate(
+        template=meet_template, input_variables=["context", "question"]
+    )
+    meet_qa = RetrievalQA.from_chain_type(
+        llm=llm,
+        chain_type="stuff",
+        retriever=support_store.as_retriever(),
+        chain_type_kwargs={"prompt": MEET_PROMPT},
+    )
+
+    # the zero-shot-react-description agent will use the "description" string to select tools
+    tools = [
+        Tool(
+            name="sales",
+            func=sales_qa.run,
+            description="""útil para cuando un usuario está interesado en información diversa de los productos de Sleep haven."""
+        ),
+        Tool(
+            name="info",
+            func=support_qa.run,
+            description="""útil para cuando el usuario quiere iniciar la conversacion, agendar o comprar."""
+        ),
+        Tool(
+            name="general_qa",
+            func=meet_qa.run,
+            description="Útil para responder preguntas generales o específicas proporcionando respuestas detalladas y contextuales como Luis Borja, el bot de marketing."
+        )
+    ]
+
+    agent = initialize_agent(
+        tools, llm, agent="zero-shot-react-description", verbose=True)
+
+    data = agent.invoke(
+        {"input": message},
+        return_only_outputs=True,
+    )
+
+    return data

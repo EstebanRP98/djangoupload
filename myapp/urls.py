@@ -22,6 +22,8 @@ urlpatterns = [
     path('upload/', views.subir_documento, name='subir_documento'),
     path('health-check/', views.health_check, name='health_check'),
     path('whatsapp', viewsChat.received_message, name='received_message'),
+    path('generate', viewsChat.generate_data, name='generate_data'),
+    path('chat', viewsChat.chat_agent, name='chat_agent'),
     #     path('message-intention/', viewsAi.message_intention, name='message_intention'),
     #     path('message-product/', viewsAi.message_products, name='message_product'),
     #     path('entrenar/', viewsAi.entrenar_modelo_spicy,
