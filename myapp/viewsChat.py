@@ -153,10 +153,10 @@ def plantilla_mensaje(text, number):
 
 def generate_data(request):
     if request.method == 'GET':
-        # pdf_path_info = "/home/ubuntu/djangoupload/myapp/chat/pdf/Info.pdf"
-        # pdf_path_suport = "/home/ubuntu/djangoupload/myapp/chat/pdf/Sleep_2.pdf"
-        pdf_path_info = r"C:\Users\david\Documents\Python\ed_empre\myapp\chat\pdf\Info.pdf"
-        pdf_path_suport = r"C:\Users\david\Documents\Python\ed_empre\myapp\chat\pdf\Sleep_2.pdf"
+        pdf_path_info = "/home/ubuntu/djangoupload/myapp/chat/pdf/Info.pdf"
+        pdf_path_suport = "/home/ubuntu/djangoupload/myapp/chat/pdf/Sleep_2.pdf"
+        # pdf_path_info = r"C:\Users\david\Documents\Python\ed_empre\myapp\chat\pdf\Info.pdf"
+        # pdf_path_suport = r"C:\Users\david\Documents\Python\ed_empre\myapp\chat\pdf\Sleep_2.pdf"
         loader = PyPDFLoader(pdf_path_info)
         kb_data = loader.load_and_split()
         loader = PyPDFLoader(pdf_path_suport)
