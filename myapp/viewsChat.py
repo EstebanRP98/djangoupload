@@ -53,7 +53,8 @@ def received_message(request):
 
             print("este es el texto: ", question_user)
             # answer = viewsAi.message_chatbot(question_user, number)
-            answer = 'Hola'
+            data = generate_agent(question_user)
+            answer = data['output']
             body_answer = plantilla_mensaje(answer, number)
             send_message = whatsappService(body_answer)
             if send_message:
@@ -177,6 +178,10 @@ def generate_data(request):
         return JsonResponse({'message': "ok"})
     else:
         return JsonResponse({'message': 'Invalid request'}, status=400)
+
+
+def chat_method(message):
+    data = generate_agent(query)
 
 
 @csrf_exempt
